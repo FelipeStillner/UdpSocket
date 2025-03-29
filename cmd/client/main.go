@@ -11,7 +11,6 @@ func main() {
 		fmt.Printf("Some error %v", err)
 		return
 	}
-	fmt.Print(conn)
 	fmt.Fprintf(conn, "Hi UDP Server, How are you doing?")
 	conn.Close()
 }
