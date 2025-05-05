@@ -1,10 +1,13 @@
 package protocol
 
 import (
+	"fmt"
+	"math/rand"
 	"net"
 	"slices"
 	"sort"
 	"strings"
+	"time"
 )
 
 type client struct {
@@ -33,7 +36,7 @@ func (c *client) SendRequest(request Request) (Response, error) {
 
 	conn.Write(encoded_request)
 
-	received_responses, err := receiveResponse(conn, request)
+	received_responses, err := receiveResponse(conn)
 	if err != nil {
 		return Response{}, err
 	}
@@ -42,7 +45,13 @@ func (c *client) SendRequest(request Request) (Response, error) {
 	try := 0
 	for shouldRetry && try < 5 {
 		request.Numbers = retries
-		received_reties_responses, err := receiveResponse(conn, request)
+		fmt.Printf("Retrying: %v\n", request.Numbers)
+		encoded_request, err := request.Encode()
+		if err != nil {
+			return Response{}, err
+		}
+		conn.Write(encoded_request)
+		received_reties_responses, err := receiveResponse(conn)
 		if err != nil {
 			return Response{}, err
 		}
@@ -70,32 +79,54 @@ func joinResponses(received_responses []Response) Response {
 	return return_response
 }
 
-func receiveResponse(conn net.Conn, _ Request) ([]Response, error) {
+func receiveResponse(conn net.Conn) ([]Response, error) {
+	responses_quantity := 0
+
 	wait := true
 
 	received_responses := []Response{}
+
+	err := conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if err != nil {
+		return []Response{}, err
+	}
 
 	for wait {
 		buffer := make([]byte, 2048)
 		_, err := conn.Read(buffer)
 		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				fmt.Printf("Timeout waiting for response\n")
+				break
+			}
 			return []Response{}, err
 		}
+
 		response := Response{}
 		err = response.Decode(buffer)
 		if err != nil {
 			return []Response{}, err
 		}
 
+		if rand.Intn(100) < 50 {
+			fmt.Printf("Simulating loss of response: %d\n", response.Number)
+			continue
+		}
+
 		if response.Status != STATUS_OK {
+			fmt.Printf("Received non-OK response: %d\n", response.Number)
 			return []Response{response}, nil
 		}
 
+		fmt.Printf("Received OK response: %d\n", response.Number)
+
 		received_responses = append(received_responses, response)
 
-		if response.Quantity == len(received_responses) {
+		if response.Quantity == responses_quantity {
 			wait = false
 		}
+
+		responses_quantity = response.Quantity
 	}
 
 	return received_responses, nil
