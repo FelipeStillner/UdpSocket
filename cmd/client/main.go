@@ -2,13 +2,16 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/FelipeStillner/UdpSocket/lib/protocol"
 )
 
 func main() {
+	endpoint := "big"
+
 	request := protocol.Request{
-		Path: "127.0.0.1:1234/big",
+		Path: "127.0.0.1:1234/" + endpoint,
 	}
 	fmt.Printf("\nRequest:\n\t%s\n", request.Path)
 
@@ -25,4 +28,6 @@ func main() {
 	}
 
 	fmt.Printf("Response %s:\n\t%d\n", protocol.TranslateStatus(response.Status), len(response.Body))
+
+	os.WriteFile("received/"+endpoint, response.Body, 0644)
 }
