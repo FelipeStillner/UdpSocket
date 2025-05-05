@@ -1,30 +1,38 @@
 package protocol
 
-import "strings"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 type Request struct {
 	Path string
-	Body []byte
 }
 
 type Response struct {
-	Body []byte
+	Status   int
+	quantity int
+	number   int
+	Body     []byte
 }
 
 func (m *Request) Encode() []byte {
-	return []byte(m.Path + "\n" + string(m.Body))
+	return []byte(fmt.Sprintf("%s", m.Path))
 }
 
 func (m *Request) Decode(data []byte) {
-	parts := strings.Split(string(data), "\n")
-	m.Path = parts[0]
-	m.Body = []byte(parts[1])
+	m.Path = string(data)
 }
 
 func (m *Response) Encode() []byte {
-	return []byte(string(m.Body))
+	return []byte(fmt.Sprintf("%d\n%d\n%d\n%s", m.Status, m.quantity, m.number, string(m.Body)))
 }
 
 func (m *Response) Decode(data []byte) {
-	m.Body = data
+	parts := strings.Split(string(data), "\n")
+	m.Status, _ = strconv.Atoi(parts[0])
+	m.quantity, _ = strconv.Atoi(parts[1])
+	m.number, _ = strconv.Atoi(parts[2])
+	m.Body = []byte(strings.Join(parts[3:], "\n"))
 }
