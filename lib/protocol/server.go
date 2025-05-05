@@ -73,6 +73,10 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 		} else {
 			size := len(body)
 			quantity := int(math.Ceil(float64(size) / 1024))
+			final_quantity := quantity
+			if len(message.Numbers) > 0 {
+				final_quantity = len(message.Numbers)
+			}
 			for i := 0; i < quantity; i++ {
 				begin := i * 1024
 				end := begin + 1024
@@ -82,7 +86,7 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 				responses = append(responses, Response{
 					Status:   STATUS_OK,
 					Body:     body[begin:end],
-					Quantity: quantity,
+					Quantity: final_quantity,
 					Number:   i,
 				})
 			}
@@ -111,7 +115,7 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 			fmt.Printf("Error encoding response: %v\n", err)
 			continue
 		}
-		fmt.Printf("Response to %v:\n\t%d\n", remoteaddr, len(response.Body))
+		fmt.Printf("Response to %v:\n\t%s\n", remoteaddr, response.Body)
 		s.conn.WriteToUDP(encoded_response, remoteaddr)
 	}
 }

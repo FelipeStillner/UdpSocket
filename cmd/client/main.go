@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
-	endpoint := "big"
+	var endpoint string
+	fmt.Scanf("%s", &endpoint)
 
 	request := protocol.Request{
 		Path: "127.0.0.1:1234/" + endpoint,
@@ -27,7 +28,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Response %s:\n\t%d\n", protocol.TranslateStatus(response.Status), len(response.Body))
+	fmt.Printf("Response %s:\n\t%s\n", protocol.TranslateStatus(response.Status), response.Body)
 
 	os.WriteFile("received/"+endpoint, response.Body, 0644)
 }

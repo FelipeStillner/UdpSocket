@@ -14,7 +14,7 @@ import (
 var (
 	MAX_RETRIES = 5
 	TIMEOUT     = 5 * time.Second
-	LOSS_RATE   = 0
+	LOSS_RATE   = 50
 )
 
 type client struct {
@@ -121,7 +121,6 @@ func receiveResponse(conn net.Conn) ([]Response, error) {
 		}
 
 		if response.Status != STATUS_OK {
-			fmt.Printf("Received non-OK response: %d\n", response.Number)
 			return []Response{response}, nil
 		}
 
@@ -129,11 +128,10 @@ func receiveResponse(conn net.Conn) ([]Response, error) {
 
 		received_responses = append(received_responses, response)
 
+		responses_quantity++
 		if response.Quantity == responses_quantity {
 			wait = false
 		}
-
-		responses_quantity = response.Quantity
 	}
 
 	return received_responses, nil
@@ -144,14 +142,15 @@ func verifyRetries(received_responses []Response) (bool, []int) {
 	quantity := 0
 	for _, response := range received_responses {
 		quantity = response.Quantity
+		if response.Status != STATUS_OK {
+			return false, []int{}
+		}
 		hash, err := response.getHash()
 		if err != nil {
 			return true, []int{}
 		}
 		if bytes.Equal(response.Hash, hash) {
-			if response.Status == STATUS_OK {
-				notRetry = append(notRetry, response.Number)
-			}
+			notRetry = append(notRetry, response.Number)
 		}
 	}
 	if quantity == 0 {
