@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"net"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -23,37 +24,42 @@ func (c *client) SendRequest(request Request) (Response, error) {
 	defer conn.Close()
 
 	request.Path = strings.Join(parts[1:], "/")
+	request.Numbers = []int{}
 
-	conn.Write(request.Encode())
+	encoded_request, err := request.Encode()
+	if err != nil {
+		return Response{}, err
+	}
 
-	wait := true
+	conn.Write(encoded_request)
 
-	return_response := Response{}
+	received_responses, err := receiveResponse(conn, request)
+	if err != nil {
+		return Response{}, err
+	}
 
-	received_responses := []Response{}
-
-	for wait {
-		buffer := make([]byte, 1024)
-		_, err := conn.Read(buffer)
+	shouldRetry, retries := verifyRetries(received_responses)
+	try := 0
+	for shouldRetry && try < 5 {
+		request.Numbers = retries
+		received_reties_responses, err := receiveResponse(conn, request)
 		if err != nil {
 			return Response{}, err
 		}
-		response := Response{}
-		response.Decode(buffer)
-
-		if response.Status != STATUS_OK {
-			return response, nil
-		}
-
-		received_responses = append(received_responses, response)
-
-		if response.quantity == len(received_responses) {
-			wait = false
-		}
+		received_responses = append(received_responses, received_reties_responses...)
+		shouldRetry, retries = verifyRetries(received_responses)
+		try++
 	}
 
+	return_response := joinResponses(received_responses)
+
+	return return_response, nil
+}
+
+func joinResponses(received_responses []Response) Response {
+	return_response := Response{}
 	sort.Slice(received_responses, func(i, j int) bool {
-		return received_responses[i].number < received_responses[j].number
+		return received_responses[i].Number < received_responses[j].Number
 	})
 
 	return_response.Status = received_responses[len(received_responses)-1].Status
@@ -61,5 +67,59 @@ func (c *client) SendRequest(request Request) (Response, error) {
 		return_response.Body = append(return_response.Body, response.Body...)
 	}
 
-	return return_response, nil
+	return return_response
+}
+
+func receiveResponse(conn net.Conn, _ Request) ([]Response, error) {
+	wait := true
+
+	received_responses := []Response{}
+
+	for wait {
+		buffer := make([]byte, 2048)
+		_, err := conn.Read(buffer)
+		if err != nil {
+			return []Response{}, err
+		}
+		response := Response{}
+		err = response.Decode(buffer)
+		if err != nil {
+			return []Response{}, err
+		}
+
+		if response.Status != STATUS_OK {
+			return []Response{response}, nil
+		}
+
+		received_responses = append(received_responses, response)
+
+		if response.Quantity == len(received_responses) {
+			wait = false
+		}
+	}
+
+	return received_responses, nil
+}
+
+func verifyRetries(received_responses []Response) (bool, []int) {
+	notRetry := []int{}
+	quantity := 0
+	for _, response := range received_responses {
+		quantity = response.Quantity
+		if response.Status == STATUS_OK {
+			notRetry = append(notRetry, response.Number)
+		}
+	}
+	if quantity == 0 {
+		return true, []int{}
+	}
+
+	retries := []int{}
+	for i := 0; i < quantity; i++ {
+		if !slices.Contains(notRetry, i) {
+			retries = append(retries, i)
+		}
+	}
+
+	return len(retries) > 0, retries
 }

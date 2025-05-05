@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 type server struct {
@@ -32,7 +33,6 @@ func (s *server) AddPath(path string) {
 }
 
 func (s *server) ListenRequests() {
-	fmt.Printf("Running server on %v\n", s.conn.LocalAddr())
 	buffer := make([]byte, 2048)
 	for {
 		n, remoteaddr, err := s.conn.ReadFromUDP(buffer)
@@ -67,8 +67,8 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 			responses = append(responses, Response{
 				Status:   STATUS_INTERNAL_SERVER_ERROR,
 				Body:     []byte("Error reading file"),
-				quantity: 1,
-				number:   0,
+				Quantity: 1,
+				Number:   0,
 			})
 		} else {
 			size := len(body)
@@ -82,8 +82,8 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 				responses = append(responses, Response{
 					Status:   STATUS_OK,
 					Body:     body[begin:end],
-					quantity: quantity,
-					number:   i,
+					Quantity: quantity,
+					Number:   i,
 				})
 			}
 		}
@@ -91,14 +91,22 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 		responses = append(responses, Response{
 			Status:   STATUS_NOT_FOUND,
 			Body:     []byte("Path not found"),
-			quantity: 1,
-			number:   0,
+			Quantity: 1,
+			Number:   0,
 		})
 	}
 
 	for _, response := range responses {
-		fmt.Printf("Response to %v:\n\t%s\n", remoteaddr, response.Body)
-		s.conn.WriteToUDP(response.Encode(), remoteaddr)
+		if len(message.Numbers) > 0 && !slices.Contains(message.Numbers, response.Number) {
+			continue
+		}
+		encoded_response, err := response.Encode()
+		if err != nil {
+			fmt.Printf("Error encoding response: %v\n", err)
+			continue
+		}
+		fmt.Printf("Response to %v:\n\t%d\n", remoteaddr, len(response.Body))
+		s.conn.WriteToUDP(encoded_response, remoteaddr)
 	}
 }
 

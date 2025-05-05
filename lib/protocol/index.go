@@ -1,38 +1,64 @@
 package protocol
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
+	"unicode"
 )
 
+func cleanJSONData(data []byte) []byte {
+	// Remove null bytes and other control characters
+	return bytes.Map(func(r rune) rune {
+		if r == 0 || unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, data)
+}
+
 type Request struct {
-	Path string
+	Path    string `json:"path"`
+	Numbers []int  `json:"numbers"`
 }
 
 type Response struct {
-	Status   int
-	quantity int
-	number   int
-	Body     []byte
+	Status   int    `json:"status"`
+	Quantity int    `json:"quantity"`
+	Number   int    `json:"number"`
+	Body     []byte `json:"body"`
 }
 
-func (m *Request) Encode() []byte {
-	return []byte(fmt.Sprintf("%s", m.Path))
+func (m *Request) Encode() ([]byte, error) {
+	data, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("Error encoding request: %v", err)
+	}
+	return data, nil
 }
 
-func (m *Request) Decode(data []byte) {
-	m.Path = string(data)
+func (m *Request) Decode(data []byte) error {
+	cleanData := cleanJSONData(data)
+	err := json.Unmarshal(cleanData, m)
+	if err != nil {
+		return fmt.Errorf("Error decoding request: %v", err)
+	}
+	return nil
 }
 
-func (m *Response) Encode() []byte {
-	return []byte(fmt.Sprintf("%d\n%d\n%d\n%s", m.Status, m.quantity, m.number, string(m.Body)))
+func (m *Response) Encode() ([]byte, error) {
+	data, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("Error encoding response: %v", err)
+	}
+	return data, nil
 }
 
-func (m *Response) Decode(data []byte) {
-	parts := strings.Split(string(data), "\n")
-	m.Status, _ = strconv.Atoi(parts[0])
-	m.quantity, _ = strconv.Atoi(parts[1])
-	m.number, _ = strconv.Atoi(parts[2])
-	m.Body = []byte(strings.Join(parts[3:], "\n"))
+func (m *Response) Decode(data []byte) error {
+	cleanData := cleanJSONData(data)
+	err := json.Unmarshal(cleanData, m)
+	if err != nil {
+		return fmt.Errorf("Error decoding response: %v", err)
+	}
+	return nil
 }
