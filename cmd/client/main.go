@@ -30,5 +30,7 @@ func main() {
 
 	fmt.Printf("Response %s:\n\t%s\n", protocol.TranslateStatus(response.Status), response.Body)
 
-	os.WriteFile("received/"+endpoint, response.Body, 0644)
+	if response.Status == protocol.STATUS_OK {
+		os.WriteFile("received/"+endpoint, response.Body, 0644)
+	}
 }
