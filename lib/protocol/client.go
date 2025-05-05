@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"net"
+	"sort"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ func (c *client) SendRequest(request Request) (Response, error) {
 
 	return_response := Response{}
 
-	received_responses := 0
+	received_responses := []Response{}
 
 	for wait {
 		buffer := make([]byte, 1024)
@@ -44,16 +45,20 @@ func (c *client) SendRequest(request Request) (Response, error) {
 			return response, nil
 		}
 
-		received_responses++
+		received_responses = append(received_responses, response)
 
-		return_response.Body = append(return_response.Body, response.Body...)
-		return_response.quantity = response.quantity
-		return_response.number = response.number
-		return_response.Status = response.Status
-
-		if response.quantity == received_responses {
+		if response.quantity == len(received_responses) {
 			wait = false
 		}
+	}
+
+	sort.Slice(received_responses, func(i, j int) bool {
+		return received_responses[i].number < received_responses[j].number
+	})
+
+	return_response.Status = received_responses[len(received_responses)-1].Status
+	for _, response := range received_responses {
+		return_response.Body = append(return_response.Body, response.Body...)
 	}
 
 	return return_response, nil
