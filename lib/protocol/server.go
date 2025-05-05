@@ -100,6 +100,12 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 		if len(message.Numbers) > 0 && !slices.Contains(message.Numbers, response.Number) {
 			continue
 		}
+		hash, err := response.getHash()
+		if err != nil {
+			fmt.Printf("Error encoding response: %v\n", err)
+			continue
+		}
+		response.Hash = hash
 		encoded_response, err := response.Encode()
 		if err != nil {
 			fmt.Printf("Error encoding response: %v\n", err)

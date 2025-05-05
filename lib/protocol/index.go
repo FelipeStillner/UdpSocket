@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"unicode"
@@ -27,6 +28,7 @@ type Response struct {
 	Quantity int    `json:"quantity"`
 	Number   int    `json:"number"`
 	Body     []byte `json:"body"`
+	Hash     []byte `json:"hash"`
 }
 
 func (m *Request) Encode() ([]byte, error) {
@@ -61,4 +63,14 @@ func (m *Response) Decode(data []byte) error {
 		return fmt.Errorf("Error decoding response: %v", err)
 	}
 	return nil
+}
+
+func (m Response) getHash() ([]byte, error) {
+	m.Hash = []byte{}
+	encoded_response, err := m.Encode()
+	if err != nil {
+		return nil, err
+	}
+	hash := md5.Sum(encoded_response)
+	return hash[:], nil
 }

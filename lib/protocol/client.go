@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"net"
@@ -8,6 +9,12 @@ import (
 	"sort"
 	"strings"
 	"time"
+)
+
+var (
+	MAX_RETRIES = 5
+	TIMEOUT     = 5 * time.Second
+	LOSS_RATE   = 0
 )
 
 type client struct {
@@ -43,7 +50,7 @@ func (c *client) SendRequest(request Request) (Response, error) {
 
 	shouldRetry, retries := verifyRetries(received_responses)
 	try := 0
-	for shouldRetry && try < 5 {
+	for shouldRetry && try < MAX_RETRIES {
 		request.Numbers = retries
 		fmt.Printf("Retrying: %v\n", request.Numbers)
 		encoded_request, err := request.Encode()
@@ -86,7 +93,7 @@ func receiveResponse(conn net.Conn) ([]Response, error) {
 
 	received_responses := []Response{}
 
-	err := conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	err := conn.SetReadDeadline(time.Now().Add(TIMEOUT))
 	if err != nil {
 		return []Response{}, err
 	}
@@ -108,7 +115,7 @@ func receiveResponse(conn net.Conn) ([]Response, error) {
 			return []Response{}, err
 		}
 
-		if rand.Intn(100) < 50 {
+		if rand.Intn(100) < LOSS_RATE {
 			fmt.Printf("Simulating loss of response: %d\n", response.Number)
 			continue
 		}
@@ -137,8 +144,14 @@ func verifyRetries(received_responses []Response) (bool, []int) {
 	quantity := 0
 	for _, response := range received_responses {
 		quantity = response.Quantity
-		if response.Status == STATUS_OK {
-			notRetry = append(notRetry, response.Number)
+		hash, err := response.getHash()
+		if err != nil {
+			return true, []int{}
+		}
+		if bytes.Equal(response.Hash, hash) {
+			if response.Status == STATUS_OK {
+				notRetry = append(notRetry, response.Number)
+			}
 		}
 	}
 	if quantity == 0 {
