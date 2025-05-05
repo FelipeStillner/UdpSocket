@@ -8,7 +8,7 @@ import (
 
 func main() {
 	request := protocol.Request{
-		Path: "big",
+		Path: "127.0.0.1:1234/hello",
 	}
 	fmt.Printf("\nRequest:\n\t%s\n", request.Path)
 
@@ -24,5 +24,5 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Response:\n\t%s\n", response.Body)
+	fmt.Printf("Response %s:\n\t%s\n", protocol.TranslateStatus(response.Status), response.Body)
 }

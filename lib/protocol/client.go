@@ -2,24 +2,28 @@ package protocol
 
 import (
 	"net"
+	"strings"
 )
 
 type client struct {
-	conn net.Conn
 }
 
 func NewClient() (*client, error) {
-	conn, err := net.Dial("udp", "127.0.0.1:1234")
-	if err != nil {
-		return nil, err
-	}
-	return &client{
-		conn: conn,
-	}, nil
+	return &client{}, nil
 }
 
 func (c *client) SendRequest(request Request) (Response, error) {
-	c.conn.Write(request.Encode())
+	parts := strings.Split(request.Path, "/")
+
+	conn, err := net.Dial("udp", parts[0])
+	if err != nil {
+		return Response{}, err
+	}
+	defer conn.Close()
+
+	request.Path = strings.Join(parts[1:], "/")
+
+	conn.Write(request.Encode())
 
 	wait := true
 
@@ -29,7 +33,7 @@ func (c *client) SendRequest(request Request) (Response, error) {
 
 	for wait {
 		buffer := make([]byte, 1024)
-		_, err := c.conn.Read(buffer)
+		_, err := conn.Read(buffer)
 		if err != nil {
 			return Response{}, err
 		}
