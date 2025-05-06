@@ -14,7 +14,7 @@ import (
 var (
 	MAX_RETRIES = 5
 	TIMEOUT     = 5 * time.Second
-	LOSS_RATE   = 50
+	LOSS_RATE   = 0
 )
 
 type client struct {

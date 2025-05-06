@@ -16,5 +16,6 @@ func main() {
 	server.AddPath("hello")
 	server.AddPath("unicode")
 	server.AddPath("big")
+	server.AddPath("megabyte")
 	server.ListenRequests()
 }

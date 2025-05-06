@@ -28,7 +28,11 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Response %s:\n\t%s\n", protocol.TranslateStatus(response.Status), response.Body)
+	if len(response.Body) > 100 {
+		fmt.Printf("Response %s:\n\t%s\n", protocol.TranslateStatus(response.Status), response.Body[:100])
+	} else {
+		fmt.Printf("Response %s:\n\t%s\n", protocol.TranslateStatus(response.Status), response.Body)
+	}
 
 	if response.Status == protocol.STATUS_OK {
 		os.WriteFile("received/"+endpoint, response.Body, 0644)

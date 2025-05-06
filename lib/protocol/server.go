@@ -115,7 +115,11 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 			fmt.Printf("Error encoding response: %v\n", err)
 			continue
 		}
-		fmt.Printf("Response to %v:\n\t%s\n", remoteaddr, response.Body)
+		if len(response.Body) > 100 {
+			fmt.Printf("Response to %v:\n\t%s\n", remoteaddr, response.Body[:100])
+		} else {
+			fmt.Printf("Response to %v:\n\t%s\n", remoteaddr, response.Body)
+		}
 		s.conn.WriteToUDP(encoded_response, remoteaddr)
 	}
 }
