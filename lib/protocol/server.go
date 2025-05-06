@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 )
 
 type server struct {
@@ -121,6 +122,7 @@ func (s *server) handleRequest(p []byte, remoteaddr *net.UDPAddr) {
 			fmt.Printf("Response to %v:\n\t%s\n", remoteaddr, response.Body)
 		}
 		s.conn.WriteToUDP(encoded_response, remoteaddr)
+		time.Sleep(time.Millisecond)
 	}
 }
 
